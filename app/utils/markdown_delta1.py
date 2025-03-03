@@ -4,7 +4,7 @@ import json
 
 def markdown_to_quill_delta(markdown):
     """
-    Convert markdown to Quill Delta format with proper code block handling.
+    Convert markdown to Quill Delta format.
 
     Args:
         markdown (str): Input markdown text
@@ -15,86 +15,13 @@ def markdown_to_quill_delta(markdown):
     delta = {"ops": []}
     lines = markdown.split("\n")
     i = 0
-    in_code_block = False
-    code_block_content = ""
-    code_lang = ""
 
     while i < len(lines):
         line = lines[i]
 
-        # Handle code blocks - check if we're starting a code block
-        if not in_code_block and line.strip().startswith("```"):
-            in_code_block = True
-            code_lang = line.strip()[3:].strip().lower()
-            code_block_content = ""
-            i += 1
-            continue
-
-        # Handle code blocks - check if we're ending a code block
-        elif in_code_block and line.strip().startswith("```"):
-            in_code_block = False
-
-            # Map common language aliases to standardized names
-            language_mapping = {
-                "js": "javascript",
-                "py": "python",
-                "rb": "ruby",
-                "cs": "csharp",
-                "ts": "typescript",
-                "sh": "bash",
-                "c++": "cpp",
-                "html": "html",
-                "css": "css",
-                "java": "java",
-                "php": "php",
-                "go": "go",
-                "rust": "rust",
-                "swift": "swift",
-                "kotlin": "kotlin",
-                "sql": "sql",
-                "r": "r",
-                "scala": "scala",
-                "dart": "dart",
-                "perl": "perl",
-                "powershell": "powershell",
-                "c#": "csharp",
-                "": "",  # Default for empty language specification
-            }
-
-            # Normalize language name if it's in our mapping
-            if code_lang in language_mapping:
-                code_lang = language_mapping[code_lang]
-
-            # Add the code content
-            delta["ops"].append({"insert": code_block_content.rstrip()})
-
-            # Add the code-block attribute with language if specified
-            delta["ops"].append(
-                {
-                    "insert": "\n",
-                    "attributes": {"code-block": code_lang if code_lang else True},
-                }
-            )
-
-            i += 1
-            continue
-
-        # If we're inside a code block, add the line to our code content
-        elif in_code_block:
-            code_block_content += line + "\n"
-            i += 1
-            continue
-
         # Skip empty lines but preserve them in delta
         if line.strip() == "":
             delta["ops"].append({"insert": "\n"})
-            i += 1
-            continue
-
-        # Handle horizontal line
-        if re.match(r"^-{3,}$|^_{3,}$|^\*{3,}$", line.strip()):
-            # Add divider operation
-            delta["ops"].append({"insert": "\n", "attributes": {"divider": True}})
             i += 1
             continue
 
@@ -165,6 +92,32 @@ def markdown_to_quill_delta(markdown):
             i += 1
             continue
 
+        # Handle code blocks
+        if line.startswith("```"):
+            code_lang = line[3:].strip()
+            code_content = ""
+            i += 1
+
+            while i < len(lines) and not lines[i].startswith("```"):
+                code_content += lines[i] + "\n"
+                i += 1
+
+            # Skip the closing ```
+            i += 1
+
+            # Add the code content
+            delta["ops"].append({"insert": code_content})
+
+            # Add the code-block attribute
+            delta["ops"].append(
+                {
+                    "insert": "\n",
+                    "attributes": {"code-block": True if not code_lang else code_lang},
+                }
+            )
+
+            continue
+
         # Handle normal paragraph text
         process_inline_formatting(line, delta)
 
@@ -173,7 +126,7 @@ def markdown_to_quill_delta(markdown):
 
         i += 1
 
-    return json.dumps(delta,indent=1)
+    return json.dumps(delta, indent=1)
 
 
 def process_inline_formatting(text, delta):
@@ -224,7 +177,7 @@ def process_inline_formatting(text, delta):
             i += match_len
             continue
 
-        # Handle inline code formatting with `
+        # Handle code formatting with `
         code_match = re.match(r"`(.+?)`", text[i:])
         if code_match:
             code_text = code_match.group(1)
@@ -250,16 +203,3 @@ def process_inline_formatting(text, delta):
             # No more special characters, add the rest of the text
             delta["ops"].append({"insert": text[i:]})
             break
-
-
-def to_json(delta):
-    """
-    Convert delta object to JSON string with indentation
-
-    Args:
-        delta (dict): Delta object
-
-    Returns:
-        str: JSON string representation
-    """
-    return json.dumps(delta, indent=2)

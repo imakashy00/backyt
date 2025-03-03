@@ -33,6 +33,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL")
 @auth_router.get("/google")
 async def auth_google():
     state = secrets.token_urlsafe(32)
+    print("hi")
     #  redirect to google auth
     try:
         auth_url = (
@@ -42,10 +43,13 @@ async def auth_google():
             f"&scope={SCOPE}"
             f"&state={state}"
         )
-        return RedirectResponse(url=auth_url).set_cookie(
-            "oauth_state", state, httponly=True, secure=False
-        )
+        print(auth_url)
+        response = RedirectResponse(url=auth_url)
+        response.set_cookie("oauth_state", state, httponly=True, secure=False)
+        return response
+
     except Exception as e:
+        print(f'--> Error{e} while redirecting')
         raise HTTPException(
             status_code=status.HTTP_307_TEMPORARY_REDIRECT, detail=str(e)
         )

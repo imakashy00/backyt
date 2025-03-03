@@ -123,7 +123,7 @@ async def create_folder(
                 },
             )
     except Exception as e:
-        print(f'Error{e} while creating folder')
+        print(f"Error{e} while creating folder")
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
@@ -181,7 +181,11 @@ async def get_folders(
             folder_id = str(file.folder_id)
             if folder_id in folders_dict:
                 folders_dict[folder_id]["files"].append(
-                    {"id": str(file.id), "name": file.name, "video_id": file.video_id}
+                    {
+                        "id": str(file.id),
+                        "name": file.name,
+                        "video_id": file.video_id,
+                    }
                 )
 
         # Build the folder tree

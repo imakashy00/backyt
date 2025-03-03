@@ -84,11 +84,13 @@ async def post_youtube_url(
         notes, _ = await asyncio.gather(notes_task, vector_task)
         print(f"--> Notes from ChatGpt=> {notes}")
         formated_notes = markdown_to_quill_delta(notes)
+        print(f'-->formated_notes{formated_notes} type=>{type(formated_notes)}')
         try:
             # Start transaction
             new_note = Note(
                 video_id=video_id, content=formated_notes, transcript=transcript
             )
+            print(f'New Note => {new_note}')
             db.add(new_note)
 
             new_file = File(
@@ -117,6 +119,7 @@ async def post_youtube_url(
 
         except Exception as e:
             db.rollback()
+            print(f'===>Error {e} while creating note!!!!!!!!')
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Something went wrong",
@@ -151,9 +154,9 @@ async def post_youtube_url(
         )
 
 
-@note_router.get("/note", response_model=NoteResponse)
+@note_router.get("/note/{note_id}", response_model=NoteResponse)
 async def get_note(
-    note_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+    note_id:str, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
     try:
         # Search if file is present or not
@@ -170,7 +173,7 @@ async def get_note(
         return {
             "id": str(existing_note.id),
             "note": existing_note.content,
-            "folder_id": existing_note.folder_id,
+            "folder_id": str(existing_note.folder_id),
             "video_id": existing_note.video_id,
             "message": "Note fetched",
         }

@@ -46,6 +46,7 @@ class User(Base):
         "Subscription", back_populates="user", cascade="all, delete-orphan"
     )
 
+
 # Folder Model
 class Folder(Base):
     __tablename__ = "folders"
@@ -87,7 +88,7 @@ class File(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text)  # Maybe it will be json for Quill
-    video_id:Mapped[str] = mapped_column(String)
+    video_id: Mapped[str] = mapped_column(String)
     folder_id: Mapped[UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("folders.id", ondelete="CASCADE"), nullable=False
     )
@@ -136,22 +137,6 @@ class Subscription(Base):
     user: Mapped["User"] = relationship("User", back_populates="subscriptions")
 
 
-# Transcripts
-class Transcript(Base):
-    __tablename__ = "transcripts"
-
-    id: Mapped[str] = mapped_column(String(11), primary_key=True)
-    content: Mapped[str] = mapped_column(Text, nullable=False)
-    note_id: Mapped[UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("notes.id"), nullable=False
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.current_timestamp()
-    )
-
-    note: Mapped["Note"] = relationship("Note", back_populates="transcript")
-
-
 # Notes
 class Note(Base):
     __tablename__ = "notes"
@@ -161,10 +146,7 @@ class Note(Base):
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)  # May be json format
     video_id: Mapped[str] = mapped_column(String(11), nullable=False)
+    transcript: Mapped["str"] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp()
-    )
-
-    transcript: Mapped["Transcript"] = relationship(
-        "Transcript", back_populates="note", uselist=False
     )

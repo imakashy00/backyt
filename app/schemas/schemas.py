@@ -109,7 +109,7 @@ class ChatDetail(BaseModel):
 
 class NoteResponse(BaseModel):
     id:str
-    note: Dict[str, Any]
+    note: str
     folder_id: str
     video_id: str
     message: str
@@ -117,3 +117,7 @@ class NoteResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+class NoteFetch(BaseModel):
+    note_id:str
+    folder_id:str
