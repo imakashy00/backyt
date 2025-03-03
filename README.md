@@ -104,3 +104,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 * YouTube API for video metadata
 
 Made with ❤️ by [Your Name]
+
+---
