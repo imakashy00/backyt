@@ -15,6 +15,7 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+pc = Pinecone(api_key=PINECONE_API_KEY)
 
 
 def parse_url(youtube_url: str):
@@ -23,7 +24,7 @@ def parse_url(youtube_url: str):
         print(video_id)
         return video_id
     except:
-        return f"Error extracting video_id"
+        return None
 
 
 def extract_video_transcript(video_id: str):
@@ -33,7 +34,8 @@ def extract_video_transcript(video_id: str):
         formatted_text = formatter.format_transcript(transcript)
         return formatted_text
     except Exception as e:
-        return f"Error: {e}"
+        print(f"--> While extracting the transcript following error occured {e} ")
+        return None
 
 
 def break_into_chunks(transcript):
@@ -46,25 +48,27 @@ def break_into_chunks(transcript):
 async def create_embeddings(chunks: List[str]):
     # Generate embeddings
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-    vectors = embeddings.embed_documents(chunks)
+    vectors = await embeddings.aembed_documents(chunks)
     return vectors
 
 
 async def store_in_pinecone(
     chunks: List[str], vectors: List[List[float]], video_id: str
 ):
-    pc = Pinecone(api_key=PINECONE_API_KEY)
-    index = pc.Index("ytnote")
+    try:
+        index = pc.Index("ytnote")
 
-    vector_metadata = [
-        {
-            "id": f"{video_id}_{i}",
-            "values": vector,
-            "metadata": {"text": chunk, "video_id": video_id, "chunk_index": i},
-        }
-        for i, (chunk, vector) in enumerate(zip(chunks, vectors))
-    ]
-    index.upsert(vectors=vector_metadata)
+        vector_metadata = [
+            {
+                "id": f"{video_id}_{i}",
+                "values": vector,
+                "metadata": {"text": chunk, "video_id": video_id, "chunk_index": i},
+            }
+            for i, (chunk, vector) in enumerate(zip(chunks, vectors))
+        ]
+        index.upsert(vectors=vector_metadata)
+    except Exception as e:
+        print(f"Error {e} while storing in pinecone db")
 
 
 async def gen_small_notes(chunk: str):
@@ -74,7 +78,7 @@ async def gen_small_notes(chunk: str):
         messages=[
             {
                 "role": "system",
-                "content": f"Generates stuctured Markdown notes add emoji also from the following text",
+                "content": f"Generates stuctured Markdown notes from the following text add emoji also",
             },
             {"role": "user", "content": chunk},
         ],
@@ -102,13 +106,6 @@ async def generate_notes(chunks: List[str]):
     return response.choices[0].message.content
 
 
-# def format_notes(text: str | None):
-#     """Convert raw notes into a properly formatted string..."""
-#     if text is not None:
-#         return text.replace("\\n", "\n").strip()
-#     return ""
-
-
 async def query_transcript(question: str, video_id: str):
     """
     Query Pinecone for relevant transcript chunks based on user question.
@@ -118,7 +115,6 @@ async def query_transcript(question: str, video_id: str):
     question_vector = await embeddings.aembed_query(question)
 
     # Query Pinecone
-    pc = Pinecone(api_key=PINECONE_API_KEY)
     index = pc.Index("ytnote")
 
     # Query with video_id filter
@@ -129,10 +125,9 @@ async def query_transcript(question: str, video_id: str):
         include_metadata=True,
     )
 
-    
     # Extract relevant transcript chunks
     contexts = []
-    print(f'-->Query response{query_response}')
+    print(f"-->Query response{query_response}")
     for match in query_response["matches"]:
         if match["score"] > 0.10:  # Similarity threshold
             contexts.append(match["metadata"]["text"])
@@ -145,7 +140,7 @@ async def answer_question(question: str, video_id: str):
     """
     # Retrieve relevant context
     contexts = await query_transcript(question, video_id)
-    print(f'-->Context{contexts}')
+    print(f"-->Context{contexts}")
     if not contexts:
         return "I couldn't find relevant information in the transcript to answer your question."
 
@@ -168,6 +163,11 @@ async def answer_question(question: str, video_id: str):
             },
         ],
     )
-    print(f'The answer by chatGPT=> {response.choices[0].message.content}')
+    print(f"The answer by chatGPT=> {response.choices[0].message.content}")
 
     return response.choices[0].message.content
+
+
+async def create_embedding_and_store(chunks: List[str], video_id: str):
+    vectors = await create_embeddings(chunks)
+    await store_in_pinecone(chunks, vectors, video_id)

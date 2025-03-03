@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
-import httpx
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
+import secrets
+import httpx
 import os
 
 from app.core.security import (
@@ -31,6 +32,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 @auth_router.get("/google")
 async def auth_google():
+    state = secrets.token_urlsafe(32)
     #  redirect to google auth
     try:
         auth_url = (
@@ -38,15 +40,26 @@ async def auth_google():
             f"&client_id={CLIENT_ID}"
             f"&redirect_uri={REDIRECT_URI}"
             f"&scope={SCOPE}"
+            f"&state={state}"
         )
-        return RedirectResponse(url=auth_url)
+        return RedirectResponse(url=auth_url).set_cookie(
+            "oauth_state", state, httponly=True, secure=False
+        )
     except Exception as e:
-        raise HTTPException(status_code=307, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_307_TEMPORARY_REDIRECT, detail=str(e)
+        )
 
 
 # Callback route to handle the response from Google
 @auth_router.get("/auth/google-callback")
-async def callback(code: str, db: Session = Depends(get_db)):
+async def callback(
+    code: str, state: str, request: Request, db: Session = Depends(get_db)
+):
+    # Verify state matches what we sent
+    stored_state = request.cookies.get("oauth_state")
+    if not stored_state or stored_state != state:
+        raise HTTPException(status_code=400, detail="Invalid state parameter")
     print("calling auth")
     # Exchange the authorization code for an access token
     async with httpx.AsyncClient() as client:
@@ -89,22 +102,27 @@ async def callback(code: str, db: Session = Depends(get_db)):
                 value=res["access_token"],
                 httponly=True,
                 max_age=60 * 60,
-                samesite="Lax",  # type: ignore
+                samesite="lax",  # type: ignore
                 secure=False,
+                path="/",
             )
             response.set_cookie(
                 key="refresh_token",
                 value=res["refresh_token"],
                 httponly=True,
                 max_age=60 * 60 * 24 * 30,  # 30 days
-                samesite="Lax",  # type: ignore
+                samesite="lax",  # type: ignore
                 secure=False,
+                path="/",
             )
 
             return response
 
         else:
-            raise HTTPException(status_code=400, detail="Failed to fetch user info")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to fetch user info",
+            )
 
 
 @auth_router.get("/me")
@@ -113,7 +131,9 @@ async def get_me(req: Request):
     print("--- Access Token ---")
     print(access_token)
     if not access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
+        )
     user_detail = verify_token(access_token)
     return user_detail
 
@@ -124,7 +144,9 @@ async def refresh_token(req: Request, db: Session = Depends(get_db)):
     refresh_token = req.cookies.get("refresh_token")
     print(refresh_token)
     if not refresh_token:
-        raise HTTPException(status_code=401, detail="No refresh token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="No refresh token"
+        )
 
     try:
         # Verify refresh token
@@ -132,7 +154,9 @@ async def refresh_token(req: Request, db: Session = Depends(get_db)):
         print(user_data)
         user = db.query(User).filter(User.email == user_data["email"]).first()
         if not user:
-            raise HTTPException(status_code=401, detail="User not found")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+            )
 
         # Generate new tokens
         new_access_token = create_token(
@@ -149,7 +173,7 @@ async def refresh_token(req: Request, db: Session = Depends(get_db)):
             key="access_token",
             value=new_access_token,
             httponly=True,
-            max_age=3600,
+            max_age=60 * 60,
             secure=True,
             samesite="lax",
         )
@@ -164,7 +188,10 @@ async def refresh_token(req: Request, db: Session = Depends(get_db)):
         return response
 
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Invalid refresh token {str(e)}")
+        print(f"Error{e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid refresh token"
+        )
 
 
 @auth_router.post("/logout")

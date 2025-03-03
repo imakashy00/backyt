@@ -6,12 +6,13 @@ from dotenv import load_dotenv
 from app.api.folder import folder_router
 from app.core.auth import auth_router
 from app.api.notes import note_router
+from app.middlewares.middleware import rate_limit_middleware
 
 load_dotenv()
 app = FastAPI()
 port = os.getenv("PORT")
 
-
+app.middleware("http")(rate_limit_middleware)
 app.include_router(auth_router, tags=["Auth router"])
 app.include_router(note_router, tags=["Note router"])
 app.include_router(folder_router, tags=["Folder router"])

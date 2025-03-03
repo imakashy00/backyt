@@ -8,14 +8,10 @@ from sqlalchemy import (
     ForeignKey,
     Text,
     Boolean,
-    Enum as SQLAlchemyEnum,
-    Integer,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.database.db import Base
-
-# from app.schemas.schemas import BillingCycle
 
 
 # User Model
@@ -27,7 +23,6 @@ class User(Base):
     )
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
-    # email_verified: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     image: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     google_id: Mapped[str] = mapped_column(String(255), unique=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -41,7 +36,6 @@ class User(Base):
     )
 
     # Relationships
-    # accounts: Mapped[List["Account"]] = relationship("Account", back_populates="user", cascade="all, delete-orphan",lazy="select")
     folders: Mapped[List["Folder"]] = relationship(
         "Folder", back_populates="user", cascade="all, delete-orphan"
     )
@@ -52,23 +46,6 @@ class User(Base):
         "Subscription", back_populates="user", cascade="all, delete-orphan"
     )
 
-
-# Account Model
-# class Account(Base):
-#     __tablename__ = 'accounts'
-
-#     id: Mapped[str] = mapped_column(String(255), primary_key=True, default=lambda: str(uuid4()))
-#     provider: Mapped[str] = mapped_column(String())
-#     provider_account_id: Mapped[str] = mapped_column(String())
-#     refresh_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-#     expires_at: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-#     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-#     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False,server_default=func.current_timestamp(), onupdate=func.current_timestamp())
-#     user_id: Mapped[str] = mapped_column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-
-#     user: Mapped["User"] = relationship("User", back_populates="accounts")
-
-
 # Folder Model
 class Folder(Base):
     __tablename__ = "folders"
@@ -77,7 +54,6 @@ class Folder(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid4
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    # icon: Mapped[str] = mapped_column(String(255), nullable=False)
     parent_id: Mapped[Optional[UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("folders.id", ondelete="CASCADE"), nullable=True
     )

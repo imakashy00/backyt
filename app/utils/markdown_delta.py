@@ -126,7 +126,7 @@ def markdown_to_quill_delta(markdown):
 
         i += 1
 
-    return json.dumps(delta,indent=1)
+    return json.dumps(delta, indent=1)
 
 
 def process_inline_formatting(text, delta):
@@ -203,50 +203,3 @@ def process_inline_formatting(text, delta):
             # No more special characters, add the rest of the text
             delta["ops"].append({"insert": text[i:]})
             break
-
-
-# # Example usage
-# if __name__ == "__main__":
-#     markdown_example = """# 🎥 Extracting Audio from Video with Flixier
-# ## 🎉 Introduction
-# - Extract audio from almost any video (online or offline) in just a few clicks!
-# ## 📜 Important Note
-# - When using audio from another's video:
-#   - Obtain consent from the owner 📜
-#   - Alternatively, use it under fair use 🤝
-# ## 📽️ Steps to Extract Audio on PC
-# 1. **Upload File**
-#    - Upload video file from your device. 💻
-   
-# 2. **Detach Audio**
-#    - Right-click on video and select **Detach Audio**. 🎶
-   
-# 3. **Delete Video File**
-#    - Select video file and delete it. 🗑️
-# 4. **Edit Audio**
-#    - Adjust playback speed, create loops, or apply equalizer settings. 🎚️
-# 5. **Export Audio**
-#    - Click **export button**, select audio format, then click **Export Video** to download audio in under three minutes! ⏳
-# ## 🌐 Importing Audio from Online Platforms
-# 1. **Example with Facebook**
-#    - Copy video link from Facebook, go to Flixier, select **import**, and paste the link.
-# 2. **Detach and Export Audio**
-#    - Detach audio file and export it. 📤
-# 3. **Combining Multiple Audio Files**
-#    - Import from multiple platforms (YouTube, TikTok) following the same process. 📹📱
-# 4. **Position Audio on Timeline**
-#    - Arrange audio on the timeline as desired. 📊 
-# ## 🔧 Enhance Audio Quality
-# 1. Select **quick tools**.
-# 2. Click **enhance audio**.
-# 3. Apply necessary settings and click **Enhance Audio**!
-# ## 👍 Conclusion
-# - Extract audio from videos easily! 
-# - If helpful:
-#   - Like this video! ☑️
-#   - Subscribe for more! 🔔
-# ## 👋 Until Next Time
-# - Happy editing! ✂️"""
-
-    # delta = markdown_to_quill_delta(markdown_example)
-    # print(json.dumps(delta, indent=2))
