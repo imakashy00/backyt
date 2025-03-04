@@ -57,13 +57,11 @@ async def auth_google():
 
 # Callback route to handle the response from Google
 @auth_router.get("/auth/google-callback")
-async def callback(
-    code: str, state: str, request: Request, db: Session = Depends(get_db)
-):
+async def callback(code: str, db: Session = Depends(get_db)):
     # Verify state matches what we sent
-    stored_state = request.cookies.get("oauth_state")
-    if not stored_state or stored_state != state:
-        raise HTTPException(status_code=400, detail="Invalid state parameter")
+    # stored_state = request.cookies.get("oauth_state")
+    # if not stored_state or stored_state != state:
+    # raise HTTPException(status_code=400, detail="Invalid state parameter")
     print("calling auth")
     # Exchange the authorization code for an access token
     async with httpx.AsyncClient() as client:
