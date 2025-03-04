@@ -21,7 +21,7 @@ app.include_router(folder_router, tags=["Folder router"])
 # cors middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://www.ytnotes.co/"],
+    allow_origins=["https://www.ytnotes.co"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
