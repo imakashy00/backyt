@@ -12,14 +12,16 @@ load_dotenv()
 app = FastAPI()
 port = os.getenv("PORT")
 
+
 # app.middleware("http")(rate_limit_middleware)
 app.include_router(auth_router, tags=["Auth router"])
 app.include_router(note_router, tags=["Note router"])
 app.include_router(folder_router, tags=["Folder router"])
+
 # cors middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["https://www.ytnotes.co/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
