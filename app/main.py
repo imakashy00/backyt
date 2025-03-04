@@ -21,7 +21,11 @@ app.include_router(folder_router, tags=["Folder router"])
 # cors middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://www.ytnotes.co"],
+    allow_origins=[
+        "https://www.ytnotes.co",
+        "https://ytnotes.co",  # Add without www too
+        "https://backyt.onrender.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,5 +36,5 @@ if __name__ == "__main__":
         app,
         host="0.0.0.0",
         port=8000,
-        reload=True,
+        # reload=True,
     )

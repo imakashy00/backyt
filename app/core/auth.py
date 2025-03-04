@@ -107,8 +107,7 @@ async def callback(
                 httponly=True,
                 max_age=60 * 60,
                 samesite="lax",  # type: ignore
-                secure=False,
-                path="/",
+                secure=True,
             )
             response.set_cookie(
                 key="refresh_token",
@@ -116,8 +115,7 @@ async def callback(
                 httponly=True,
                 max_age=60 * 60 * 24 * 30,  # 30 days
                 samesite="lax",  # type: ignore
-                secure=False,
-                path="/",
+                secure=True,
             )
 
             return response
