@@ -32,7 +32,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 @auth_router.get("/google")
 async def auth_google():
-    state = secrets.token_urlsafe(32)
+    # state = secrets.token_urlsafe(32)
     print("hi")
     #  redirect to google auth
     try:
@@ -41,15 +41,15 @@ async def auth_google():
             f"&client_id={CLIENT_ID}"
             f"&redirect_uri={REDIRECT_URI}"
             f"&scope={SCOPE}"
-            f"&state={state}"
+            # f"&state={state}"
         )
         print(auth_url)
         response = RedirectResponse(url=auth_url)
-        response.set_cookie("oauth_state", state, httponly=True, secure=False)
+        # response.set_cookie("oauth_state", state, httponly=True, secure=False)
         return response
 
     except Exception as e:
-        print(f'--> Error{e} while redirecting')
+        print(f"--> Error{e} while redirecting")
         raise HTTPException(
             status_code=status.HTTP_302_FOUND, detail="Auth Url or user found"
         )
@@ -106,18 +106,18 @@ async def callback(
                 value=res["access_token"],
                 httponly=True,
                 max_age=60 * 60,
-                samesite="none", 
+                samesite="none",
                 secure=True,
-                domain=".ytnotes.co"
+                domain=".ytnotes.co",
             )
             response.set_cookie(
                 key="refresh_token",
                 value=res["refresh_token"],
                 httponly=True,
                 max_age=60 * 60 * 24 * 30,  # 30 days
-                samesite="none",  
+                samesite="none",
                 secure=True,
-                domain=".ytnotes.co"
+                domain=".ytnotes.co",
             )
 
             return response
@@ -180,7 +180,7 @@ async def refresh_token(req: Request, db: Session = Depends(get_db)):
             max_age=60 * 60,
             secure=True,
             samesite="none",
-            domain=".ytnotes.co"
+            domain=".ytnotes.co",
         )
         response.set_cookie(
             key="refresh_token",
@@ -189,7 +189,7 @@ async def refresh_token(req: Request, db: Session = Depends(get_db)):
             max_age=7 * 24 * 60 * 60,
             secure=True,
             samesite="none",
-            domain=".ytnotes.co"
+            domain=".ytnotes.co",
         )
         return response
 
@@ -203,7 +203,19 @@ async def refresh_token(req: Request, db: Session = Depends(get_db)):
 @auth_router.post("/logout")
 async def logout(user: User = Depends(get_current_user)):
     response = JSONResponse(content={"message": "Logged out Successfully"})
-    response.delete_cookie("access_token", httponly=True, secure=True, samesite="none", domain=".ytnotes.co")
-    response.delete_cookie("refresh_token", httponly=True, secure=True, samesite="none", domain=".ytnotes.co")
+    response.delete_cookie(
+        "access_token",
+        httponly=True,
+        secure=True,
+        samesite="none",
+        domain=".ytnotes.co",
+    )
+    response.delete_cookie(
+        "refresh_token",
+        httponly=True,
+        secure=True,
+        samesite="none",
+        domain=".ytnotes.co",
+    )
 
     return response

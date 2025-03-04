@@ -24,7 +24,7 @@ app.add_middleware(
     allow_origins=[
         "https://www.ytnotes.co",
         "https://ytnotes.co",  # Add without www too
-        "https://backyt.onrender.com",
+        # "https://backyt.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
