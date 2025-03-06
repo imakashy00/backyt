@@ -1,7 +1,6 @@
 from enum import Enum
-from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 
 class OAuthUser(BaseModel):
@@ -59,6 +58,7 @@ class FileResponse(BaseModel):
     id: str
     name: str
     video_id: Optional[str] = None
+    folder_id: str
 
     class Config:
         from_attributes = True
@@ -107,17 +107,27 @@ class ChatDetail(BaseModel):
     question: str
 
 
-class NoteResponse(BaseModel):
-    id:str
-    note: str
-    folder_id: str
+class NewNote(BaseModel):
+    id: str
+    content: str
+    name: str
     video_id: str
-    message: str
+    folder_id: str
+
+
+class NoteResponse(BaseModel):
+    note: NewNote
 
 
 class MessageResponse(BaseModel):
     message: str
 
+
 class NoteFetch(BaseModel):
-    note_id:str
-    folder_id:str
+    note_id: str
+    folder_id: str
+
+
+class UpdateNote(BaseModel):
+    file_id: str
+    note: dict

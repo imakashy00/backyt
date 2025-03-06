@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from app.api.folder import folder_router
 from app.core.auth import auth_router
 from app.api.notes import note_router
+
 # from app.middlewares.middleware import rate_limit_middleware
 
 load_dotenv()
@@ -24,7 +25,7 @@ app.add_middleware(
     allow_origins=[
         "https://www.ytnotes.co",
         "https://ytnotes.co",  # Add without www too
-        # "https://backyt.onrender.com",
+        "http://localhost:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -36,5 +37,5 @@ if __name__ == "__main__":
         app,
         host="0.0.0.0",
         port=8000,
-        # reload=True,
+        reload=True, # for production Comment this line
     )

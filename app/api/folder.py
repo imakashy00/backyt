@@ -176,6 +176,7 @@ async def get_folders(
             )
             .all()
         )
+        print(file_results)
         # Add files to their respective folders
         for file in file_results:
             folder_id = str(file.folder_id)
@@ -185,6 +186,7 @@ async def get_folders(
                         "id": str(file.id),
                         "name": file.name,
                         "video_id": file.video_id,
+                        "folder_id":str(file.folder_id),
                     }
                 )
 

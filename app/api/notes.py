@@ -1,4 +1,5 @@
 #  Handles YouTube API calls, video metadata extraction, and transcript downloading
+import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Text
 import asyncio
@@ -14,6 +15,7 @@ from app.schemas.schemas import (
     NoteDetail,
     NoteResponse,
     RenameFile,
+    UpdateNote,
 )
 from app.utils.helpers import (
     answer_question,
@@ -84,13 +86,13 @@ async def post_youtube_url(
         notes, _ = await asyncio.gather(notes_task, vector_task)
         print(f"--> Notes from ChatGpt=> {notes}")
         formated_notes = markdown_to_quill_delta(notes)
-        print(f'-->formated_notes{formated_notes} type=>{type(formated_notes)}')
+        print(f"-->formated_notes{formated_notes} type=>{type(formated_notes)}")
         try:
             # Start transaction
             new_note = Note(
                 video_id=video_id, content=formated_notes, transcript=transcript
             )
-            print(f'New Note => {new_note}')
+            print(f"New Note => {new_note}")
             db.add(new_note)
 
             new_file = File(
@@ -110,16 +112,17 @@ async def post_youtube_url(
             db.refresh(new_file)
 
             return {
-                "id": str(new_file.id),
-                "note": new_note.content,
-                "folder_id": note_detail.folder_id,
-                "video_id": new_note.video_id,
-                "message": "Note generated",
+                "note": {
+                    "id": str(new_file.id),
+                    "name": new_file.name,
+                    "content": new_file.content,
+                    "folder_id": str(new_file.folder_id),
+                    "video_id": new_file.video_id,
+                }
             }
-
         except Exception as e:
             db.rollback()
-            print(f'===>Error {e} while creating note!!!!!!!!')
+            print(f"===>Error {e} while creating note!!!!!!!!")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Something went wrong",
@@ -138,11 +141,13 @@ async def post_youtube_url(
         db.commit()
         db.refresh(new_file)
         return {
-            "id": str(new_file.id),
-            "note": new_file.content,
-            "folder_id": note_detail.folder_id,
-            "video_id": new_file.video_id,
-            "message": "Note generated",
+            "note": {
+                "id": str(new_file.id),
+                "name": new_file.name,
+                "content": new_file.content,
+                "folder_id": str(new_file.folder_id),
+                "video_id": new_file.video_id,
+            }
         }
 
     except Exception as e:
@@ -156,7 +161,7 @@ async def post_youtube_url(
 
 @note_router.get("/note/{note_id}", response_model=NoteResponse)
 async def get_note(
-    note_id:str, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+    note_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
     try:
         # Search if file is present or not
@@ -171,11 +176,13 @@ async def get_note(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Note not found"
             )
         return {
-            "id": str(existing_note.id),
-            "note": existing_note.content,
-            "folder_id": str(existing_note.folder_id),
-            "video_id": existing_note.video_id,
-            "message": "Note fetched",
+            "note": {
+                "id": str(existing_note.id),
+                "name": existing_note.name,
+                "content": existing_note.content,
+                "folder_id": str(existing_note.folder_id),
+                "video_id": existing_note.video_id,
+            }
         }
 
     except Exception as e:
@@ -189,8 +196,7 @@ async def get_note(
 
 @note_router.put("/note", response_model=MessageResponse)
 async def update_note(
-    note_id: str,
-    note: Text,
+   update_note:UpdateNote,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -199,15 +205,15 @@ async def update_note(
         existing_note = (
             db.query(File)
             .filter(File.user_id == user.id)
-            .filter(File.id == note_id)
+            .filter(File.id == update_note.file_id)
             .first()
         )
         if not existing_note:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Note not found"
             )
-
-        existing_note.content = note
+        print(type(update_note.note))
+        existing_note.content = json.dumps(update_note.note)
         db.commit()
         return {"message": "FIle updated successfully"}
 

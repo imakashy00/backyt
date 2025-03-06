@@ -76,7 +76,7 @@ class Folder(Base):
         "Folder", back_populates="parent", cascade="all, delete-orphan"
     )
     user: Mapped["User"] = relationship("User", back_populates="folders")
-    files: Mapped[List["File"]] = relationship("File", back_populates="folder")
+    files: Mapped[List["File"]] = relationship("File", back_populates="folder",cascade="all, delete-orphan")
 
 
 # File Model
