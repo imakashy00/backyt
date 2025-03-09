@@ -9,6 +9,7 @@ from openai import AsyncOpenAI
 from pytube import YouTube
 from typing import List
 import asyncio
+import requests
 import os
 
 load_dotenv()
@@ -28,15 +29,37 @@ def parse_url(youtube_url: str):
 
 
 def extract_video_transcript(video_id: str):
+    # Save the original request function
+    original_get = requests.get
     try:
+       
+        # Define a proxy-enabled request function
+        def proxy_get(*args, **kwargs):
+            username = "spb8asd29b"
+            password = "wlvz_skyJviL90T44D"
+            proxy = f"socks5h://{username}:{password}@gate.smartproxy.com:7000"
+
+            if "proxies" not in kwargs:
+                kwargs["proxies"] = {"http": proxy, "https": proxy}
+            return original_get(*args, **kwargs)
+
+        # Replace the standard requests.get with our proxy version
+        requests.get = proxy_get
+
+        # Call the API (which will use our proxied version of requests.get)
         transcript = YouTubeTranscriptApi.get_transcript(video_id)
         formatter = TextFormatter()
         formatted_text = formatter.format_transcript(transcript)
+
+        # Restore the original requests.get
+        requests.get = original_get
+
         return formatted_text
     except Exception as e:
-        print(f"--> While extracting the transcript following error occured {e} ")
+        # Restore original requests.get even if there's an error
+        requests.get = original_get if "original_get" in locals() else requests.get
+        print(f"--> While extracting the transcript following error occurred: {e}")
         return None
-
 
 def break_into_chunks(transcript):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=400)
