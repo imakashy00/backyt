@@ -102,13 +102,13 @@ async def callback(code: str, db: Session = Depends(get_db)):
                 httponly=True,
                 max_age=60 * 60,
                 # For production -->
-                # secure=True,
-                # samesite="none",
-                # domain=".ytnotes.co",
+                secure=True,
+                samesite="none",
+                domain=".ytnotes.co",
 
                 # For development -->
-                secure=False,
-                samesite="lax",
+                # secure=False,
+                # samesite="lax",
             )
             response.set_cookie(
                 key="refresh_token",
@@ -116,13 +116,13 @@ async def callback(code: str, db: Session = Depends(get_db)):
                 httponly=True,
                 max_age=7 * 24 * 60 * 60,
                 # For production -->
-                # secure=True,
-                # samesite="none",
-                # domain=".ytnotes.co",
+                secure=True,
+                samesite="none",
+                domain=".ytnotes.co",
 
                 # For development -->
-                secure=False,
-                samesite="lax",
+                # secure=False,
+                # samesite="lax",
             )
 
             return response
@@ -184,13 +184,13 @@ async def refresh_token(req: Request, db: Session = Depends(get_db)):
             httponly=True,
             max_age=60 * 60,
             # For production -->
-            # secure=True,
-            # samesite="none",
-            # domain=".ytnotes.co",
+            secure=True,
+            samesite="none",
+            domain=".ytnotes.co",
 
             # For development -->
-            secure=False,
-            samesite="lax"
+            # secure=False,
+            # samesite="lax"
         )
         response.set_cookie(
             key="refresh_token",
@@ -198,13 +198,13 @@ async def refresh_token(req: Request, db: Session = Depends(get_db)):
             httponly=True,
             max_age=7 * 24 * 60 * 60,
             # For production -->
-            # secure=True,
-            # samesite="none",
-            # domain=".ytnotes.co",
+            secure=True,
+            samesite="none",
+            domain=".ytnotes.co",
 
             # For development -->
-            secure=False,
-            samesite="lax",
+            # secure=False,
+            # samesite="lax",
         )
         return response
 
@@ -223,26 +223,26 @@ async def logout(user: User = Depends(get_current_user)):
         httponly=True,
 
         # For production -->
-        # secure=True,
-        # samesite="none",
-        # domain=".ytnotes.co",
+        secure=True,
+        samesite="none",
+        domain=".ytnotes.co",
 
         # For development -->
-        secure=False,
-        samesite="lax"
+        # secure=False,
+        # samesite="lax"
 
     )
     response.delete_cookie(
         "refresh_token",
         httponly=True,
         # For production -->
-        # secure=True,
-        # samesite="none",
-        # domain=".ytnotes.co",
+        secure=True,
+        samesite="none",
+        domain=".ytnotes.co",
 
         # For development -->
-        secure=False,
-        samesite="lax",
+        # secure=False,
+        # samesite="lax",
     )
 
     return response
