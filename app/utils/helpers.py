@@ -35,7 +35,11 @@ def extract_video_transcript(video_id: str):
     try:
         username = "spb8asd29b"
         password = "1S4boe~sh8WldHp0gY"
-        proxy = f"https://{username}:{password}@gate.smartproxy.com:7000"
+        proxy_url = f"https://{username}:{password}@gate.smartproxy.com:7000"
+        proxies = {
+            "http":proxy_url,
+            "https":proxy_url
+            }
         # Define a proxy-enabled request function
         # def proxy_get(*args, **kwargs):
         #     username = "spb8asd29b"
@@ -48,7 +52,7 @@ def extract_video_transcript(video_id: str):
 
         # # Replace the standard requests.get with our proxy version
         # requests.get = proxy_get
-
+        print(f'Getting the transcript with proxy:{proxies}')
         # Call the API (which will use our proxied version of requests.get)
         transcript = YouTubeTranscriptApi.get_transcript(video_id, proxies=proxy)
         formatter = TextFormatter()
