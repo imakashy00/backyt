@@ -55,16 +55,24 @@ async def post_youtube_url(
         if existing_file:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="File with this name already exists in the folder",
+                detail="Duplicate file in the folder",
             )
-    except Exception as e:
+    except HTTPException as e:
         print(f"Error {e } while searching for existing file")
+        raise
+    except Exception as e:
+        print(f"Unexpected error {e} while searching for existing file")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        )
+        
     # Extract video id
     video_id = parse_url(note_detail.youtube_url)
     if video_id is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Video idInvalid YouTube URL or video ID can't be extracted",
+            detail="Invalid youtube url",
         )
     # Check if video's note already exists
     existing_video_note = db.query(Note).filter(Note.video_id == video_id).first()
@@ -74,7 +82,7 @@ async def post_youtube_url(
         transcript = extract_video_transcript(video_id)
         if transcript is None:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Transcript not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Transcript not found for this video"
             )
         transcript = transcript.replace("\n", "").strip()
         # Break the transcript in chunks
@@ -84,15 +92,15 @@ async def post_youtube_url(
         notes_task = asyncio.create_task(generate_notes(chunks))
 
         notes, _ = await asyncio.gather(notes_task, vector_task)
-        print(f"--> Notes from ChatGpt=> {notes}")
+        # print(f"--> Notes from ChatGpt=> {notes}")
         formated_notes = markdown_to_quill_delta(notes)
-        print(f"-->formated_notes{formated_notes} type=>{type(formated_notes)}")
+        # print(f"-->formated_notes{formated_notes} type=>{type(formated_notes)}")
         try:
             # Start transaction
             new_note = Note(
                 video_id=video_id, content=formated_notes, transcript=transcript
             )
-            print(f"New Note => {new_note}")
+            # print(f"New Note => {new_note}")
             db.add(new_note)
 
             new_file = File(
@@ -129,7 +137,7 @@ async def post_youtube_url(
             )
     # Note of video already exists in database
     try:
-        print(f"-->Creating new file for already existing note of videoId{video_id}")
+        # print(f"-->Creating new file for already existing note of videoId{video_id}")
         new_file = File(
             user_id=user.id,
             video_id=video_id,
@@ -152,7 +160,7 @@ async def post_youtube_url(
 
     except Exception as e:
         db.rollback()
-        print(f"--> Error {e} while creating file")
+        # print(f"--> Error {e} while creating file")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create note",

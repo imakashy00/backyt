@@ -37,7 +37,7 @@ def extract_video_transcript(video_id: str):
         def proxy_get(*args, **kwargs):
             username = "spb8asd29b"
             password = "wlvz_skyJviL90T44D"
-            proxy = f"socks5h://{username}:{password}@gate.smartproxy.com:7000"
+            proxy = f"https://{username}:{password}@gate.smartproxy.com:7000"
 
             if "proxies" not in kwargs:
                 kwargs["proxies"] = {"http": proxy, "https": proxy}
