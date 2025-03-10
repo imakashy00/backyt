@@ -32,11 +32,11 @@ def extract_video_transcript(video_id: str):
     # Save the original request function
     original_get = requests.get
     try:
-       
+
         # Define a proxy-enabled request function
         def proxy_get(*args, **kwargs):
             username = "spb8asd29b"
-            password = "wlvz_skyJviL90T44D"
+            password = "1S4boe~sh8WldHp0gY"
             proxy = f"https://{username}:{password}@gate.smartproxy.com:7000"
 
             if "proxies" not in kwargs:
