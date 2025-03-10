@@ -54,7 +54,7 @@ def extract_video_transcript(video_id: str):
         # requests.get = proxy_get
         print(f'Getting the transcript with proxy:{proxies}')
         # Call the API (which will use our proxied version of requests.get)
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, proxies=proxy)
+        transcript = YouTubeTranscriptApi.get_transcript(video_id, proxies=proxies)
         formatter = TextFormatter()
         formatted_text = formatter.format_transcript(transcript)
 
