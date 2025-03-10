@@ -10,7 +10,6 @@ from openai import AsyncOpenAI
 from pytube import YouTube
 from typing import List
 import asyncio
-import requests
 import os
 
 load_dotenv()
@@ -19,6 +18,8 @@ client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 pc = Pinecone(api_key=PINECONE_API_KEY)
 
+SMART_PROXY_USERNAME = os.getenv("SMART_PROXY_USERNAME")
+SMART_PROXY_PASSWORD = os.getenv("SMART_PROXY_PASSWORD")
 
 def parse_url(youtube_url: str):
     try:
@@ -32,39 +33,20 @@ def parse_url(youtube_url: str):
 def extract_video_transcript(video_id: str):
     # Save the original request function
     # original_get = requests.get
-    try:
-        username = "spb8asd29b"
-        password = "1S4boe~sh8WldHp0gY"
-        proxy_url = f"https://{username}:{password}@gate.smartproxy.com:7000"
+    try:         
+        proxy_url = f"https://{SMART_PROXY_USERNAME}:{SMART_PROXY_PASSWORD}@gate.smartproxy.com:7000"
         proxies = {
             "http":proxy_url,
             "https":proxy_url
             }
-        # Define a proxy-enabled request function
-        # def proxy_get(*args, **kwargs):
-        #     username = "spb8asd29b"
-        #     password = "1S4boe~sh8WldHp0gY"
-        #     proxy = f"https://{username}:{password}@gate.smartproxy.com:7000"
-
-        #     if "proxies" not in kwargs:
-        #         kwargs["proxies"] = {"http": proxy, "https": proxy}
-        #     return original_get(*args, **kwargs)
-
-        # # Replace the standard requests.get with our proxy version
-        # requests.get = proxy_get
-        print(f'Getting the transcript with proxy:{proxies}')
         # Call the API (which will use our proxied version of requests.get)
         transcript = YouTubeTranscriptApi.get_transcript(video_id, proxies=proxies)
         formatter = TextFormatter()
         formatted_text = formatter.format_transcript(transcript)
 
-        # Restore the original requests.get
-        # requests.get = original_get
 
         return formatted_text
     except Exception as e:
-        # Restore original requests.get even if there's an error
-        # requests.get = original_get if "original_get" in locals() else requests.get
         print(f"--> While extracting the transcript following error occurred: {e}")
         return None
 
