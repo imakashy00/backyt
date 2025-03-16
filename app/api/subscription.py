@@ -100,15 +100,7 @@ async def handle_subscription_created(data: Dict, db: Session):
     is_cancelling = False
     if scheduled_change is not None:
         is_cancelling = scheduled_change.get("action") == "cancel"
-    print(f"Users data=>{user.email, user.name}")
-    print(f"paddle_subscription_id=>{data.get("id")}")
-    print(f"status=>{data.get("status","active")}")
-    print(f"Plain_id=>{data.get("items", [{}])[0].get("price", {}).get("id")}")
-    print(
-        f"current_period_end=>{datetime.fromisoformat(
-            data.get("current_billing_period", {}).get("ends_at").replace("Z", "+00:00"))}"
-    )
-    print(f"cancel_at_period_end=>{is_cancelling}")
+    
     # Create new subscription record
     subscription = Subscription(
         user_id=user.id,
