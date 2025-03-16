@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
+from contextlib import asynccontextmanager
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
+
 # import secrets
 import httpx
 import os
@@ -22,6 +24,7 @@ from app.schemas.schemas import OAuthUser
 load_dotenv()
 auth_router = APIRouter()
 
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "development") == "production"
 CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
@@ -31,10 +34,15 @@ SCOPE = "openid profile email"
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 
+@asynccontextmanager
+async def get_http_client():
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        yield client
+
+
 @auth_router.get("/google")
 async def auth_google():
-    # state = secrets.token_urlsafe(32)
-    # print("hi")
+
     #  redirect to google auth
     try:
         auth_url = (
@@ -44,10 +52,7 @@ async def auth_google():
             f"&scope={SCOPE}"
             # f"&state={state}"
         )
-        print(auth_url)
         return RedirectResponse(url=auth_url)
-        # response.set_cookie("oauth_state", state, httponly=True, secure=False)
-        # return response
 
     except Exception as e:
         print(f"--> Error{e} while redirecting")
@@ -59,99 +64,118 @@ async def auth_google():
 # Callback route to handle the response from Google
 @auth_router.get("/auth/google-callback")
 async def callback(code: str, db: Session = Depends(get_db)):
-    # print("calling auth")
-    # Exchange the authorization code for an access token
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            TOKEN_URL,
-            data={
-                "code": code,
-                "client_id": CLIENT_ID,
-                "client_secret": CLIENT_SECRET,
-                "redirect_uri": REDIRECT_URI,
-                "grant_type": "authorization_code",
-            },
-        )
-    # print("--> Response=>")
-    # Check if token response is successful
-    if response.status_code == 200:
-        tokens = response.json()
-        access_token = tokens["access_token"]
-        # You can use the access token to fetch user info from Google's API
-        # Example: https://www.googleapis.com/oauth2/v3/userinfo
-        async with httpx.AsyncClient() as client:
+    try:
+        # Use connection pooling with async context manager
+        async with get_http_client() as client:
+            # Exchange the authorization code for an access token
+            token_response = await client.post(
+                TOKEN_URL,
+                data={
+                    "code": code,
+                    "client_id": CLIENT_ID,
+                    "client_secret": CLIENT_SECRET,
+                    "redirect_uri": REDIRECT_URI,
+                    "grant_type": "authorization_code",
+                },
+                timeout=15.0,  # Extended timeout for OAuth provider
+            )
+
+            if token_response.status_code != 200:
+                print(
+                    f"Token response error: {token_response.status_code}, {token_response.text}"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Failed to exchange authorization code",
+                )
+
+            tokens = token_response.json()
+            access_token = tokens["access_token"]
+
+            # Get user info with the access token
             userinfo_response = await client.get(
                 "https://www.googleapis.com/oauth2/v3/userinfo",
                 headers={"Authorization": f"Bearer {access_token}"},
-            )
-        if userinfo_response.status_code == 200:
-            userinfo_response = userinfo_response.json()
-            user = OAuthUser(
-                email=userinfo_response["email"],
-                name=userinfo_response["name"],
-                image=userinfo_response["picture"],
-                google_id=userinfo_response["sub"],
-            )
-            # print("--> Authenticate user")
-            res = await authenticate_user(user, db)
-            # print("--> Authentication Done")
-            response = RedirectResponse(url=f"{FRONTEND_URL}/dashboard")
-            response.set_cookie(
-                key="access_token",
-                value=res["access_token"],
-                httponly=True,
-                max_age=60 * 60,
-                # For production -->
-                secure=True,
-                samesite="none",
-                domain=".ytnotes.co",
-
-                # For development -->
-                # secure=False,
-                # samesite="lax",
-            )
-            response.set_cookie(
-                key="refresh_token",
-                value=res["refresh_token"],
-                httponly=True,
-                max_age=7 * 24 * 60 * 60,
-                # For production -->
-                secure=True,
-                samesite="none",
-                domain=".ytnotes.co",
-
-                # For development -->
-                # secure=False,
-                # samesite="lax",
+                timeout=10.0,
             )
 
-            return response
+            if userinfo_response.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Failed to fetch user info",
+                )
 
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to fetch user info",
-            )
+            userinfo = userinfo_response.json()
+
+        # Create OAuth user object
+        user = OAuthUser(
+            email=userinfo["email"],
+            name=userinfo["name"],
+            image=userinfo["picture"],
+            google_id=userinfo["sub"],
+        )
+
+        # Authenticate user and get tokens
+        res = await authenticate_user(user, db)
+
+        # Create response with cookies
+        response = RedirectResponse(url=f"{FRONTEND_URL}/dashboard")
+
+        # Set cookie parameters based on environment
+        response.set_cookie(
+            key="access_token",
+            value=res["access_token"],
+            httponly=True,
+            max_age=60 * 60 * 24,  # 24 hours (corrected from 60*60*60)
+            secure=IS_PRODUCTION,
+            samesite="none" if IS_PRODUCTION else "lax",
+            domain=".ytnotes.co" if IS_PRODUCTION else None,
+        )
+
+        response.set_cookie(
+            key="refresh_token",
+            value=res["refresh_token"],
+            httponly=True,
+            max_age=7 * 24 * 60 * 60,  # 7 days
+            secure=IS_PRODUCTION,
+            samesite="none" if IS_PRODUCTION else "lax",
+            domain=".ytnotes.co" if IS_PRODUCTION else None,
+        )
+
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Unexpected error in Google callback: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authentication error",
+        )
 
 
 @auth_router.get("/me")
 async def get_me(req: Request):
     access_token = req.cookies.get("access_token")
     # print("--- Access Token ---")
-    # print(access_token)
     if not access_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
         )
-    user_detail = verify_token(access_token)
-    return user_detail
+    try:
+        user_detail = verify_token(access_token)
+        return user_detail
+    except Exception as e:
+        print(f"Token verification error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        )
 
 
 @auth_router.get("/refresh")
 async def refresh_token(req: Request, db: Session = Depends(get_db)):
-    # print("--- Refresh Token ---")
     refresh_token = req.cookies.get("refresh_token")
-    # print(refresh_token)
+
     if not refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="No refresh token"
@@ -160,7 +184,8 @@ async def refresh_token(req: Request, db: Session = Depends(get_db)):
     try:
         # Verify refresh token
         user_data = verify_token(refresh_token)
-        # print(user_data)
+
+        # Verify user exists in database
         user = db.query(User).filter(User.email == user_data["email"]).first()
         if not user:
             raise HTTPException(
@@ -177,72 +202,55 @@ async def refresh_token(req: Request, db: Session = Depends(get_db)):
 
         response = JSONResponse(content={"message": "Tokens refreshed"})
 
-        # Set both tokens
+        # Set cookie parameters based on environment
         response.set_cookie(
             key="access_token",
             value=new_access_token,
             httponly=True,
-            max_age=60 * 60,
-            # For production -->
-            secure=True,
-            samesite="none",
-            domain=".ytnotes.co",
-
-            # For development -->
-            # secure=False,
-            # samesite="lax"
+            max_age=60 * 60 * 24,  # 24 hours (corrected from 60*60*60)
+            secure=IS_PRODUCTION,
+            samesite="none" if IS_PRODUCTION else "lax",
+            domain=".ytnotes.co" if IS_PRODUCTION else None,
         )
+
         response.set_cookie(
             key="refresh_token",
             value=new_refresh_token,
             httponly=True,
-            max_age=7 * 24 * 60 * 60,
-            # For production -->
-            secure=True,
-            samesite="none",
-            domain=".ytnotes.co",
-
-            # For development -->
-            # secure=False,
-            # samesite="lax",
+            max_age=7 * 24 * 60 * 60,  # 7 days
+            secure=IS_PRODUCTION,
+            samesite="none" if IS_PRODUCTION else "lax",
+            domain=".ytnotes.co" if IS_PRODUCTION else None,
         )
+
         return response
 
-    except Exception:
-        # print(f"Error{e}")
+    except Exception as e:
+        print(f"Refresh token error: {e}")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid refresh token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
         )
 
 
 @auth_router.post("/logout")
 async def logout(user: User = Depends(get_current_user)):
     response = JSONResponse(content={"message": "Logged out Successfully"})
+
+    # Cookie parameters based on environment
     response.delete_cookie(
         "access_token",
         httponly=True,
-
-        # For production -->
-        secure=True,
-        samesite="none",
-        domain=".ytnotes.co",
-
-        # For development -->
-        # secure=False,
-        # samesite="lax"
-
+        secure=IS_PRODUCTION,
+        samesite="none" if IS_PRODUCTION else "lax",
+        domain=".ytnotes.co" if IS_PRODUCTION else None,
     )
+
     response.delete_cookie(
         "refresh_token",
         httponly=True,
-        # For production -->
-        secure=True,
-        samesite="none",
-        domain=".ytnotes.co",
-
-        # For development -->
-        # secure=False,
-        # samesite="lax",
+        secure=IS_PRODUCTION,
+        samesite="none" if IS_PRODUCTION else "lax",
+        domain=".ytnotes.co" if IS_PRODUCTION else None,
     )
 
     return response

@@ -1,5 +1,5 @@
 #  Contains reusable utility functions like date formatting, text processing, URL validation, pagination helpers, response formatters, and common data transformations
-from weakref import proxy
+
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pinecone import Pinecone
 from langchain_openai import OpenAIEmbeddings
@@ -21,6 +21,7 @@ pc = Pinecone(api_key=PINECONE_API_KEY)
 SMART_PROXY_USERNAME = os.getenv("SMART_PROXY_USERNAME")
 SMART_PROXY_PASSWORD = os.getenv("SMART_PROXY_PASSWORD")
 
+
 def parse_url(youtube_url: str):
     try:
         video_id = YouTube(youtube_url).video_id
@@ -33,17 +34,13 @@ def parse_url(youtube_url: str):
 def extract_video_transcript(video_id: str):
     # Save the original request function
     # original_get = requests.get
-    try:         
+    try:
         proxy_url = f"https://{SMART_PROXY_USERNAME}:{SMART_PROXY_PASSWORD}@gate.smartproxy.com:7000"
-        proxies = {
-            "http":proxy_url,
-            "https":proxy_url
-            }
+        proxies = {"http": proxy_url, "https": proxy_url}
         # Call the API (which will use our proxied version of requests.get)
         transcript = YouTubeTranscriptApi.get_transcript(video_id, proxies=proxies)
         formatter = TextFormatter()
         formatted_text = formatter.format_transcript(transcript)
-
 
         return formatted_text
     except Exception as e:

@@ -3,6 +3,7 @@ import uvicorn
 import os
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from app.api.subscription import subscription_router
 from app.api.folder import folder_router
 from app.core.auth import auth_router
 from app.api.notes import note_router
@@ -18,7 +19,7 @@ port = os.getenv("PORT")
 app.include_router(auth_router, tags=["Auth router"])
 app.include_router(note_router, tags=["Note router"])
 app.include_router(folder_router, tags=["Folder router"])
-
+app.include_router(subscription_router, tags=["subscriptions"])
 # cors middleware
 app.add_middleware(
     CORSMiddleware,
@@ -37,5 +38,5 @@ if __name__ == "__main__":
         app,
         host="0.0.0.0",
         port=8000,
-        reload=True, # for production Comment this line
+        reload=True,  # for production Comment this line
     )

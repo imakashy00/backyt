@@ -42,7 +42,7 @@ class User(Base):
     files: Mapped[List["File"]] = relationship(
         "File", back_populates="user", cascade="all, delete-orphan"
     )
-    subscriptions: Mapped[List["Subscription"]] = relationship(
+    subscriptions: Mapped["Subscription"] = relationship(
         "Subscription", back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -115,32 +115,40 @@ class File(Base):
 class Subscription(Base):
     __tablename__ = "subscriptions"
 
-    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
     user_id: Mapped[str] = mapped_column(
         String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    razorpay_id: Mapped[str] = mapped_column(String(255))
-    plan_id: Mapped[str] = mapped_column(String(255))
-    status: Mapped[str] = mapped_column(String)  # active cancelled paused
+    paddle_subscription_id: Mapped[str] = mapped_column(
+        String, unique=True, nullable=False
+    )
+    plan_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String, default="active"
+    )  # active, cancelled, paused
     start_date: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp()
     )
-    next_billed_date: Mapped[datetime] = mapped_column(DateTime)
+    current_period_end: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
+    cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    cancelled_at: Mapped[datetime] = mapped_column(DateTime)
+    # Relationship
     user: Mapped["User"] = relationship("User", back_populates="subscriptions")
 
-
-    # created_at: Mapped[datetime] = mapped_column(
-    #     DateTime, nullable=False, server_default=func.current_timestamp()
-    # )
-    # updated_at: Mapped[datetime] = mapped_column(
-    #     DateTime,
-    #     nullable=False,
-    #     server_default=func.current_timestamp(),
-    #     onupdate=func.current_timestamp(),
-    # )
-
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
 
 
 # Notes
@@ -150,7 +158,7 @@ class Note(Base):
     id: Mapped[UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid4
     )
-    content: Mapped[str] = mapped_column(Text, nullable=False)  
+    content: Mapped[str] = mapped_column(Text, nullable=False)
     video_id: Mapped[str] = mapped_column(String(11), nullable=False)
     transcript: Mapped["str"] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

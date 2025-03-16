@@ -1,12 +1,11 @@
 #  Handles YouTube API calls, video metadata extraction, and transcript downloading
 import json
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Text
 import asyncio
 
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from app.core.security import get_current_user
+from app.core.security import get_subscribed_user
 from app.database.db import get_db
 from app.models.models import File, User, Note
 from app.schemas.schemas import (
@@ -35,7 +34,7 @@ note_router = APIRouter()
 async def post_youtube_url(
     note_detail: NoteDetail,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_subscribed_user),
 ):
     print(
         f"-->The {note_detail.folder_id},{note_detail.name},{note_detail.youtube_url}"
@@ -66,7 +65,7 @@ async def post_youtube_url(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
         )
-        
+
     # Extract video id
     video_id = parse_url(note_detail.youtube_url)
     if video_id is None:
@@ -82,7 +81,8 @@ async def post_youtube_url(
         transcript = extract_video_transcript(video_id)
         if transcript is None:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Transcript not found for this video"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Transcript not found for this video",
             )
         transcript = transcript.replace("\n", "").strip()
         # Break the transcript in chunks
@@ -169,7 +169,9 @@ async def post_youtube_url(
 
 @note_router.get("/note/{note_id}", response_model=NoteResponse)
 async def get_note(
-    note_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+    note_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_subscribed_user),
 ):
     try:
         # Search if file is present or not
@@ -204,9 +206,9 @@ async def get_note(
 
 @note_router.put("/note", response_model=MessageResponse)
 async def update_note(
-   update_note:UpdateNote,
+    update_note: UpdateNote,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_subscribed_user),
 ):
     try:
         # Check if file exists
@@ -235,7 +237,7 @@ async def update_note(
 async def rename_note(
     rename_file: RenameFile,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_subscribed_user),
 ):
     try:
         file = (
@@ -280,7 +282,7 @@ async def rename_note(
 async def ask_question(
     chat_detail: ChatDetail,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_subscribed_user),
 ):
     try:
         # Check if the video exists in the user's notes
@@ -314,7 +316,9 @@ async def ask_question(
 
 @note_router.delete("/note/{note_id}", response_model=MessageResponse)
 async def delete_note(
-    note_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+    note_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_subscribed_user),
 ):
     try:
         existing_note = (

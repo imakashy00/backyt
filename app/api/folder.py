@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
-from app.core.security import get_current_user
+from app.core.security import get_subscribed_user
 from app.database.db import get_db
 from app.models.models import File, Folder, User
 from app.schemas.schemas import (
@@ -29,7 +29,7 @@ folder_router = APIRouter()
 async def create_folder(
     folder_create: FolderCreateRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_subscribed_user),
 ):
     try:
         print(
@@ -132,7 +132,7 @@ async def create_folder(
 
 @folder_router.get("/folder", response_model=FolderTreeResponse)
 async def get_folders(
-    db: Session = Depends(get_db), user: User = Depends(get_current_user)
+    db: Session = Depends(get_db), user: User = Depends(get_subscribed_user)
 ):
     try:
         # Using a recursive CTE to get all folders with hierarchy information in one query
@@ -186,7 +186,7 @@ async def get_folders(
                         "id": str(file.id),
                         "name": file.name,
                         "video_id": file.video_id,
-                        "folder_id":str(file.folder_id),
+                        "folder_id": str(file.folder_id),
                     }
                 )
 
@@ -213,7 +213,7 @@ async def get_folders(
 async def rename_folder(
     folder_data: FolderRename,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_subscribed_user),
 ):
     # check if new name is not already taken in the same level or is not same as parent folder name
     try:
@@ -262,7 +262,7 @@ async def rename_folder(
 async def delete_folder(
     folder_id: str,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_subscribed_user),
 ):
     try:
         existing_folder = (
